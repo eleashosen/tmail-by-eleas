@@ -2,7 +2,7 @@ from http.server import BaseHTTPRequestHandler
 import json
 import requests
 
-BOT_TOKEN = "8652494574:AAF5NMh97pPBsohZfBXFbOZwtAdJHmbtqrw"
+BOT_TOKEN = "YOUR_BOT_TOKEN"
 API = f"https://api.telegram.org/bot{BOT_TOKEN}/"
 
 users = {}
@@ -22,6 +22,22 @@ def generate_mail():
 
 class handler(BaseHTTPRequestHandler):
 
+    # =========================
+    # Browser GET request
+    # =========================
+    def do_GET(self):
+
+        self.send_response(200)
+        self.send_header("Content-type", "text/plain")
+        self.end_headers()
+
+        self.wfile.write(
+            b"Tmail By Eleas Bot Running"
+        )
+
+    # =========================
+    # Telegram POST webhook
+    # =========================
     def do_POST(self):
 
         length = int(self.headers['Content-Length'])
@@ -38,7 +54,9 @@ class handler(BaseHTTPRequestHandler):
 
             send_message(
                 chat_id,
-                "Tmail By Eleas\n\n/newmail\n/check"
+                "Tmail By Eleas\n\n"
+                "/newmail\n"
+                "/check"
             )
 
         elif text == "/newmail":
