@@ -2,7 +2,7 @@ from http.server import BaseHTTPRequestHandler
 import json
 import requests
 
-BOT_TOKEN = "YOUR_BOT_TOKEN"
+BOT_TOKEN = "8652494574:AAF5NMh97pPBsohZfBXFbOZwtAdJHmbtqrw"
 API = f"https://api.telegram.org/bot{BOT_TOKEN}/"
 
 users = {}
