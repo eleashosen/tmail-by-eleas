@@ -1,3 +1,4 @@
+from http.server import BaseHTTPRequestHandler
 import json
 import requests
 
@@ -23,87 +24,92 @@ def generate_mail():
 
     return requests.get(url).json()[0]
 
-def handler(request):
+class handler(BaseHTTPRequestHandler):
 
-    # Browser test
-    if request.method == "GET":
+    def do_GET(self):
 
-        return {
-            "statusCode": 200,
-            "body": "Tmail By Eleas Running"
-        }
+        self.send_response(200)
+        self.end_headers()
 
-    # Telegram webhook
-    body = json.loads(request.body)
-
-    message = body.get("message", {})
-
-    text = message.get("text", "")
-    chat_id = message.get("chat", {}).get("id")
-
-    if text == "/start":
-
-        send_message(
-            chat_id,
-            "Tmail By Eleas\n\n"
-            "/newmail\n"
-            "/check"
+        self.wfile.write(
+            b"Tmail By Eleas Running"
         )
 
-    elif text == "/newmail":
+    def do_POST(self):
 
-        email = generate_mail()
+        length = int(self.headers['Content-Length'])
 
-        users[str(chat_id)] = email
+        body = self.rfile.read(length)
 
-        send_message(
-            chat_id,
-            f"Your Temp Mail:\n\n{email}"
-        )
+        data = json.loads(body)
 
-    elif text == "/check":
+        message = data.get("message", {})
 
-        if str(chat_id) not in users:
+        text = message.get("text", "")
+
+        chat_id = message.get("chat", {}).get("id")
+
+        if text == "/start":
 
             send_message(
                 chat_id,
-                "Use /newmail first"
+                "Tmail By Eleas\n\n"
+                "/newmail\n"
+                "/check"
             )
 
-        else:
+        elif text == "/newmail":
 
-            email = users[str(chat_id)]
+            email = generate_mail()
 
-            login, domain = email.split("@")
+            users[str(chat_id)] = email
 
-            url = (
-                "https://www.1secmail.com/api/v1/"
-                f"?action=getMessages&login={login}&domain={domain}"
+            send_message(
+                chat_id,
+                f"Your Temp Mail:\n\n{email}"
             )
 
-            msgs = requests.get(url).json()
+        elif text == "/check":
 
-            if not msgs:
+            if str(chat_id) not in users:
 
                 send_message(
                     chat_id,
-                    "Inbox Empty"
+                    "Use /newmail first"
                 )
 
             else:
 
-                txt = ""
+                email = users[str(chat_id)]
 
-                for m in msgs:
+                login, domain = email.split("@")
 
-                    txt += (
-                        f"From: {m['from']}\n"
-                        f"Subject: {m['subject']}\n\n"
+                url = (
+                    "https://www.1secmail.com/api/v1/"
+                    f"?action=getMessages&login={login}&domain={domain}"
+                )
+
+                msgs = requests.get(url).json()
+
+                if not msgs:
+
+                    send_message(
+                        chat_id,
+                        "Inbox Empty"
                     )
 
-                send_message(chat_id, txt)
+                else:
 
-    return {
-        "statusCode": 200,
-        "body": "ok"
-    }
+                    txt = ""
+
+                    for m in msgs:
+
+                        txt += (
+                            f"From: {m['from']}\n"
+                            f"Subject: {m['subject']}\n\n"
+                        )
+
+                    send_message(chat_id, txt)
+
+        self.send_response(200)
+        self.end_headers()
