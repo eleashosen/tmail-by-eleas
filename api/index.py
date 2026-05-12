@@ -1,6 +1,7 @@
-from http.server import BaseHTTPRequestHandler
-import json
+from flask import Flask, request
 import requests
+
+app = Flask(__name__)
 
 BOT_TOKEN = "8652494574:AAF5NMh97pPBsohZfBXFbOZwtAdJHmbtqrw"
 
@@ -24,92 +25,82 @@ def generate_mail():
 
     return requests.get(url).json()[0]
 
-class handler(BaseHTTPRequestHandler):
+@app.route("/", methods=["GET"])
+def home():
 
-    def do_GET(self):
+    return "Tmail By Eleas Running"
 
-        self.send_response(200)
-        self.end_headers()
+@app.route("/", methods=["POST"])
+def webhook():
 
-        self.wfile.write(
-            b"Tmail By Eleas Running"
+    data = request.json
+
+    message = data.get("message", {})
+
+    text = message.get("text", "")
+
+    chat_id = message.get("chat", {}).get("id")
+
+    if text == "/start":
+
+        send_message(
+            chat_id,
+            "Tmail By Eleas\n\n"
+            "/newmail\n"
+            "/check"
         )
 
-    def do_POST(self):
+    elif text == "/newmail":
 
-        length = int(self.headers['Content-Length'])
+        email = generate_mail()
 
-        body = self.rfile.read(length)
+        users[str(chat_id)] = email
 
-        data = json.loads(body)
+        send_message(
+            chat_id,
+            f"Your Temp Mail:\n\n{email}"
+        )
 
-        message = data.get("message", {})
+    elif text == "/check":
 
-        text = message.get("text", "")
-
-        chat_id = message.get("chat", {}).get("id")
-
-        if text == "/start":
-
-            send_message(
-                chat_id,
-                "Tmail By Eleas\n\n"
-                "/newmail\n"
-                "/check"
-            )
-
-        elif text == "/newmail":
-
-            email = generate_mail()
-
-            users[str(chat_id)] = email
+        if str(chat_id) not in users:
 
             send_message(
                 chat_id,
-                f"Your Temp Mail:\n\n{email}"
+                "Use /newmail first"
             )
 
-        elif text == "/check":
+        else:
 
-            if str(chat_id) not in users:
+            email = users[str(chat_id)]
+
+            login, domain = email.split("@")
+
+            url = (
+                "https://www.1secmail.com/api/v1/"
+                f"?action=getMessages&login={login}&domain={domain}"
+            )
+
+            msgs = requests.get(url).json()
+
+            if not msgs:
 
                 send_message(
                     chat_id,
-                    "Use /newmail first"
+                    "Inbox Empty"
                 )
 
             else:
 
-                email = users[str(chat_id)]
+                txt = ""
 
-                login, domain = email.split("@")
+                for m in msgs:
 
-                url = (
-                    "https://www.1secmail.com/api/v1/"
-                    f"?action=getMessages&login={login}&domain={domain}"
-                )
-
-                msgs = requests.get(url).json()
-
-                if not msgs:
-
-                    send_message(
-                        chat_id,
-                        "Inbox Empty"
+                    txt += (
+                        f"From: {m['from']}\n"
+                        f"Subject: {m['subject']}\n\n"
                     )
 
-                else:
+                send_message(chat_id, txt)
 
-                    txt = ""
-
-                    for m in msgs:
-
-                        txt += (
-                            f"From: {m['from']}\n"
-                            f"Subject: {m['subject']}\n\n"
-                        )
-
-                    send_message(chat_id, txt)
-
-        self.send_response(200)
-        self.end_headers()
+    return "ok"
